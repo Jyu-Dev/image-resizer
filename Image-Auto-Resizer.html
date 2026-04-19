@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Junly Image Auto-Resizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <!-- Pica.js for high-quality Lanczos upscaling and sharpening -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pica/9.0.1/pica.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .drag-over {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+        /* Custom scrollbar for horizontal menu */
+        .overflow-x-auto::-webkit-scrollbar {
+            height: 6px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="max-w-6xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gray-900 text-white p-6 text-center">
+            <h1 class="text-2xl font-bold flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                Junly Image Auto-Resizer
+            </h1>
+            <p class="text-gray-300 mt-2 text-sm">
+                Until you can see, and admit, that YOU are the problem.<br>
+                You will be unable to realize that YOU must be the solution.
+            </p>
+        </div>
+
+        <div class="p-8">
+            <!-- Mode Selection -->
+            <div class="mb-6 flex flex-nowrap overflow-x-auto gap-3 md:gap-4 pb-4 px-2 scroll-smooth before:m-auto after:m-auto w-full">
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-white border-2 border-blue-500 px-4 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-all" id="label-standard">
+                    <input type="radio" name="resizeMode" value="standard" class="w-4 h-4 text-blue-600 focus:ring-blue-500" checked>
+                    <div>
+                        <div class="font-bold text-gray-800">Standard (-res)</div>
+                        <div class="text-xs text-gray-500">800x400px • 120-160kb</div>
+                    </div>
+                </label>
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-all" id="label-featured">
+                    <input type="radio" name="resizeMode" value="featured" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                    <div>
+                        <div class="font-bold text-gray-800">Featured (-feat)</div>
+                        <div class="text-xs text-gray-500">650x433px • 120-180kb</div>
+                    </div>
+                </label>
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-all" id="label-cover">
+                    <input type="radio" name="resizeMode" value="cover" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                    <div>
+                        <div class="font-bold text-gray-800">Cover (-cover)</div>
+                        <div class="text-xs text-gray-500">1600x800px • 210-230kb</div>
+                    </div>
+                </label>
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-all" id="label-fpres">
+                    <input type="radio" name="resizeMode" value="fpres" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                    <div>
+                        <div class="font-bold text-gray-800">FPP (-fpres)</div>
+                        <div class="text-xs text-gray-500">1200x800px • 140-180kb</div>
+                    </div>
+                </label>
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-all" id="label-upscale">
+                    <input type="radio" name="resizeMode" value="upscale" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                    <div>
+                        <div class="font-bold text-gray-800">Upscale (-up)</div>
+                        <div class="text-xs text-gray-500">Enhance x2, x4, x8</div>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Upload Zone -->
+            <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center transition-all duration-200 cursor-pointer hover:bg-gray-50 flex flex-col items-center justify-center min-h-[250px]">
+                <!-- Added 'multiple' attribute here to accept batch uploads -->
+                <input type="file" id="fileInput" class="hidden" accept="image/*" multiple>
+                <div id="uploadUI" class="flex flex-col items-center pointer-events-none">
+                    <div class="bg-blue-100 p-4 rounded-full mb-4 text-blue-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800">Click to upload or drag and drop</h3>
+                    <p class="text-sm text-gray-500 mt-1">PNG, JPG, WEBP, or GIF (Multiple allowed)</p>
+                </div>
+
+                <!-- Processing UI -->
+                <div id="processingUI" class="hidden flex flex-col items-center">
+                    <svg class="animate-spin h-10 w-10 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="text-gray-600 font-medium">Processing image...</p>
+                </div>
+            </div>
+
+            <!-- Manual Crop Section -->
+            <div id="cropSection" class="hidden flex-col items-center mt-4">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2 w-full flex justify-between items-center">
+                    <span>Adjust Crop Area</span>
+                    <span id="queueCounter" class="hidden bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full font-medium shadow-sm">Image 1 of 3</span>
+                </h3>
+                <p class="text-sm text-gray-500 mb-6 w-full text-left">Drag and resize the box to select the exact area you want. The aspect ratio is locked to <span id="aspectRatioText">800x400</span>.</p>
+                <div class="w-full max-h-[500px] bg-gray-100 rounded overflow-hidden flex justify-center border border-gray-300">
+                    <img id="imageToCrop" src="" class="max-w-full block" alt="Image to crop">
+                </div>
+                <div class="w-full flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
+                    <div id="upscaleControls" class="hidden items-center gap-2 w-full sm:w-auto justify-center sm:justify-start">
+                        <label for="upscaleMultiplier" class="text-sm font-semibold text-gray-700">Multiplier:</label>
+                        <select id="upscaleMultiplier" class="bg-white border border-gray-300 text-gray-900 text-sm rounded focus:ring-blue-500 focus:border-blue-500 block px-2 py-1">
+                            <option value="2">x2 (Standard Enhance)</option>
+                            <option value="4">x4 (Deep Enhance)</option>
+                            <option value="8">x8 (Ultra Enhance)</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-3 w-full sm:w-auto ml-auto">
+                        <button id="cancelCropBtn" class="px-5 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors">Cancel Batch</button>
+                        <button id="applyCropBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 min-w-[150px]">
+                            <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+                            <span>Apply & Save</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Section (Batch Ready) -->
+            <div id="resultSection" class="hidden mt-8">
+                <div class="border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+                    <div class="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white gap-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Processing Complete</h4>
+                            <p class="text-xs text-gray-500" id="totalProcessedText">Processed 1 image</p>
+                        </div>
+                        <button id="downloadAllBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                            Download All
+                        </button>
+                    </div>
+                    
+                    <!-- Dynamic Grid for all processed images -->
+                    <div id="resultsGrid" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[60vh] overflow-y-auto">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <button id="resetBtn" class="mt-6 text-sm font-medium text-gray-500 hover:text-gray-800 underline flex items-center justify-center w-full">
+                    Process another batch
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden canvas for image processing -->
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadUI = document.getElementById('uploadUI');
+        const processingUI = document.getElementById('processingUI');
+        const resultSection = document.getElementById('resultSection');
+        const cropSection = document.getElementById('cropSection');
+        const imageToCrop = document.getElementById('imageToCrop');
+        const applyCropBtn = document.getElementById('applyCropBtn');
+        const cancelCropBtn = document.getElementById('cancelCropBtn');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const totalProcessedText = document.getElementById('totalProcessedText');
+        const queueCounter = document.getElementById('queueCounter');
+        const resetBtn = document.getElementById('resetBtn');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const aspectRatioText = document.getElementById('aspectRatioText');
+
+        let cropper = null;
+        let currentFile = null;
+
+        // Batch Queue System Variables
+        let fileQueue = [];
+        let processedResults = [];
+        let totalFilesToProcess = 0;
+
+        // Modes Configuration
+        const modes = {
+            standard: { width: 800, height: 400, suffix: '-res', minKB: 120, maxKB: 160 },
+            featured: { width: 650, height: 433, suffix: '-feat', minKB: 120, maxKB: 180 },
+            fpres: { width: 1200, height: 800, suffix: '-fpres', minKB: 140, maxKB: 180 },
+            cover: { width: 1600, height: 800, suffix: '-cover', minKB: 210, maxKB: 230 },
+            upscale: { width: null, height: null, suffix: '-up', minKB: null, maxKB: null }
+        };
+        let currentMode = 'standard';
+
+        // UI toggles for mode selection styling
+        const modeRadios = document.querySelectorAll('input[name="resizeMode"]');
+        const labelStandard = document.getElementById('label-standard');
+        const labelFeatured = document.getElementById('label-featured');
+        const labelFpres = document.getElementById('label-fpres');
+        const labelCover = document.getElementById('label-cover');
+        const labelUpscale = document.getElementById('label-upscale');
+        const upscaleControls = document.getElementById('upscaleControls');
+
+        modeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                currentMode = e.target.value;
+                const config = modes[currentMode];
+                
+                // Update dynamic instruction text
+                if (currentMode === 'upscale') {
+                    aspectRatioText.innerHTML = 'Free <span class="text-blue-600 font-semibold">(Advanced HD Reconstruction Enabled)</span>';
+                    upscaleControls.classList.remove('hidden');
+                    upscaleControls.classList.add('flex');
+                } else {
+                    aspectRatioText.textContent = `${config.width}x${config.height}`;
+                    upscaleControls.classList.add('hidden');
+                    upscaleControls.classList.remove('flex');
+                }
+                
+                // Reset styling for all
+                [labelStandard, labelFeatured, labelFpres, labelCover, labelUpscale].forEach(label => {
+                    label.classList.replace('border-blue-500', 'border-gray-200');
+                });
+                
+                // Apply active styling
+                if (currentMode === 'standard') {
+                    labelStandard.classList.replace('border-gray-200', 'border-blue-500');
+                } else if (currentMode === 'featured') {
+                    labelFeatured.classList.replace('border-gray-200', 'border-blue-500');
+                } else if (currentMode === 'fpres') {
+                    labelFpres.classList.replace('border-gray-200', 'border-blue-500');
+                } else if (currentMode === 'cover') {
+                    labelCover.classList.replace('border-gray-200', 'border-blue-500');
+                } else if (currentMode === 'upscale') {
+                    labelUpscale.classList.replace('border-gray-200', 'border-blue-500');
+                }
+
+                // If currently cropping, re-initialize with new aspect ratio instantly
+                if (cropper && currentFile) {
+                    loadImageForCropping(currentFile);
+                }
+            });
+        });
+
+        // --- Event Listeners for Drag & Drop ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => {
+                dropzone.classList.add('drag-over');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => {
+                dropzone.classList.remove('drag-over');
+            }, false);
+        });
+
+        dropzone.addEventListener('drop', handleDrop, false);
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        resetBtn.addEventListener('click', resetUI);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            
+            // Filter out non-image files
+            const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+            
+            if (validFiles.length === 0) {
+                alert('Please upload valid image files.');
+                return;
+            }
+
+            // Initialize Batch Processing Queue
+            fileQueue = validFiles;
+            totalFilesToProcess = validFiles.length;
+            processedResults = [];
+            
+            processNextFile();
+        }
+
+        function processNextFile() {
+            // If the queue is empty, we are done! Show the batch results screen.
+            if (fileQueue.length === 0) {
+                showFinalResults();
+                return;
+            }
+            
+            // Grab the next file in line
+            currentFile = fileQueue.shift();
+            
+            // Update the counter UI
+            const currentIdx = totalFilesToProcess - fileQueue.length;
+            queueCounter.textContent = `Image ${currentIdx} of ${totalFilesToProcess}`;
+            if (totalFilesToProcess > 1) {
+                queueCounter.classList.remove('hidden');
+            } else {
+                queueCounter.classList.add('hidden');
+            }
+            
+            // Update "Apply" button text depending on if there are more files
+            const btnSpan = applyCropBtn.querySelector('span');
+            if (btnSpan) {
+                btnSpan.textContent = fileQueue.length > 0 ? 'Next Image' : 'Apply & Save';
+            }
+
+            loadImageForCropping(currentFile);
+        }
+
+        function loadImageForCropping(file) {
+            uploadUI.classList.add('hidden');
+            processingUI.classList.remove('hidden');
+            dropzone.classList.add('pointer-events-none');
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                const config = modes[currentMode];
+                const img = new Image();
+                
+                img.onload = async () => {
+                    let srcDataUrl = e.target.result;
+
+                    // Standard feature background upscale (if smaller than target)
+                    if (currentMode !== 'upscale' && (img.width < config.width || img.height < config.height)) {
+                        const scale = Math.max(config.width / img.width, config.height / img.height);
+                        const newWidth = Math.round(img.width * scale);
+                        const newHeight = Math.round(img.height * scale);
+
+                        const srcCanvas = document.createElement('canvas');
+                        srcCanvas.width = img.width;
+                        srcCanvas.height = img.height;
+                        srcCanvas.getContext('2d').drawImage(img, 0, 0);
+
+                        const destCanvas = document.createElement('canvas');
+                        destCanvas.width = newWidth;
+                        destCanvas.height = newHeight;
+                        
+                        try {
+                            const pica = window.pica();
+                            await pica.resize(srcCanvas, destCanvas, {
+                                quality: 3,
+                                unsharpAmount: 160,
+                                unsharpRadius: 0.6,
+                                unsharpThreshold: 1
+                            });
+                            srcDataUrl = destCanvas.toDataURL('image/png'); 
+                        } catch (err) {
+                            console.error("Pica upscale failed, falling back to basic resize", err);
+                            const tempCtx = destCanvas.getContext('2d');
+                            tempCtx.imageSmoothingEnabled = true;
+                            tempCtx.imageSmoothingQuality = 'high';
+                            tempCtx.drawImage(img, 0, 0, newWidth, newHeight);
+                            srcDataUrl = destCanvas.toDataURL('image/png');
+                        }
+                    }
+
+                    if (cropper) cropper.destroy();
+
+                    imageToCrop.src = srcDataUrl;
+                    dropzone.classList.add('hidden');
+                    processingUI.classList.add('hidden');
+                    cropSection.classList.remove('hidden');
+                    cropSection.classList.add('flex'); 
+
+                    cropper = new Cropper(imageToCrop, {
+                        aspectRatio: currentMode === 'upscale' ? NaN : config.width / config.height,
+                        viewMode: 1, 
+                        dragMode: 'move',
+                        autoCropArea: 0.9, 
+                        responsive: true,
+                        guides: true,
+                        center: true,
+                        highlight: false,
+                        cropBoxMovable: true,
+                        cropBoxResizable: true,
+                    });
+                };
+                
+                img.src = e.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        // Apply Crop Button Logic (Processes current image and grabs next)
+        applyCropBtn.addEventListener('click', async () => {
+            if (!cropper) return;
+
+            const config = modes[currentMode];
+            const originalBtnContent = applyCropBtn.innerHTML;
+
+            // Show loading state
+            applyCropBtn.disabled = true;
+            applyCropBtn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Processing...</span>';
+
+            // Allow the UI to paint the loading state
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            try {
+                let finalBlob = null;
+                let finalSizeKB = 0;
+                let finalWidth = config.width;
+                let finalHeight = config.height;
+
+                if (currentMode === 'upscale') {
+                    const baseCanvas = cropper.getCroppedCanvas();
+                    const multiplier = parseInt(document.getElementById('upscaleMultiplier').value);
+                    finalWidth = baseCanvas.width * multiplier;
+                    finalHeight = baseCanvas.height * multiplier;
+
+                    // --- MAXIMUM POTENTIAL UPSCALE PIPELINE ---
+                    const pica = window.pica();
+                    let currentCanvas = baseCanvas;
+                    
+                    let steps = [];
+                    if (multiplier === 8) steps = [2, 4, 8];
+                    else if (multiplier === 4) steps = [2, 4];
+                    else steps = [2];
+
+                    for (let stepMult of steps) {
+                        let stepWidth = Math.round(baseCanvas.width * stepMult);
+                        let stepHeight = Math.round(baseCanvas.height * stepMult);
+                        
+                        let targetCanvas = document.createElement('canvas');
+                        targetCanvas.width = stepWidth;
+                        targetCanvas.height = stepHeight;
+
+                        let isFinal = stepMult === multiplier;
+                        
+                        await pica.resize(currentCanvas, targetCanvas, {
+                            quality: 3, 
+                            unsharpAmount: isFinal ? 280 : 120, 
+                            unsharpRadius: isFinal ? 1.5 : 0.8, 
+                            unsharpThreshold: 2
+                        });
+                        
+                        currentCanvas = targetCanvas;
+                    }
+
+                    const finalPolishCanvas = document.createElement('canvas');
+                    finalPolishCanvas.width = finalWidth;
+                    finalPolishCanvas.height = finalHeight;
+                    const polishCtx = finalPolishCanvas.getContext('2d');
+                    
+                    polishCtx.filter = 'contrast(1.12) saturate(1.15) brightness(1.03)';
+                    polishCtx.drawImage(currentCanvas, 0, 0);
+
+                    let dataUrl = finalPolishCanvas.toDataURL('image/jpeg', 0.98);
+                    let parts = dataUrl.split(',');
+                    let byteString = atob(parts[1]);
+                    let mimeString = parts[0].split(':')[1].split(';')[0];
+                    let ab = new ArrayBuffer(byteString.length);
+                    let ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) {
+                        ia[i] = byteString.charCodeAt(i);
+                    }
+                    finalBlob = new Blob([ab], {type: mimeString});
+                    
+                } else {
+                    const croppedCanvas = cropper.getCroppedCanvas({
+                        width: config.width,
+                        height: config.height,
+                        imageSmoothingEnabled: true,
+                        imageSmoothingQuality: 'high',
+                    });
+
+                    // Algorithm to hit target file size constraint perfectly
+                    if (config.minKB && config.maxKB) {
+                        let minBytes = config.minKB * 1024;
+                        let maxBytes = config.maxKB * 1024;
+                        let targetBytes = minBytes + ((maxBytes - minBytes) / 2); 
+                        
+                        let quality = 0.85; 
+                        let minQ = 0.01;
+                        let maxQ = 1.0;
+                        let bestDataUrl = null;
+                        let bestDiff = Infinity;
+                        
+                        for (let i = 0; i < 20; i++) {
+                            let dataUrl = croppedCanvas.toDataURL('image/jpeg', quality);
+                            let base64Data = dataUrl.split(',')[1];
+                            let sizeBytes = Math.round((base64Data.length) * 3 / 4);
+                            if (base64Data.endsWith('==')) sizeBytes -= 2;
+                            else if (base64Data.endsWith('=')) sizeBytes -= 1;
+                            
+                            let diff = Math.abs(sizeBytes - targetBytes);
+                            if (diff < bestDiff && sizeBytes <= maxBytes) { 
+                                bestDiff = diff;
+                                bestDataUrl = dataUrl;
+                            }
+
+                            if (sizeBytes > maxBytes) {
+                                maxQ = quality; 
+                                quality = (minQ + maxQ) / 2;
+                            } else if (sizeBytes < minBytes) {
+                                minQ = quality; 
+                                quality = (minQ + maxQ) / 2;
+                            } else {
+                                bestDataUrl = dataUrl;
+                                break; 
+                            }
+                        }
+                        
+                        if (!bestDataUrl) bestDataUrl = croppedCanvas.toDataURL('image/jpeg', quality);
+
+                        let parts = bestDataUrl.split(',');
+                        let byteString = atob(parts[1]);
+                        let mimeString = parts[0].split(':')[1].split(';')[0];
+                        let currentBytes = byteString.length;
+                        
+                        if (currentBytes < minBytes) {
+                            let paddedArray = new Uint8Array(Math.round(targetBytes)); 
+                            for (let i = 0; i < byteString.length; i++) {
+                                paddedArray[i] = byteString.charCodeAt(i);
+                            }
+                            finalBlob = new Blob([paddedArray], {type: mimeString});
+                        } else {
+                            let ab = new ArrayBuffer(currentBytes);
+                            let ia = new Uint8Array(ab);
+                            for (let i = 0; i < currentBytes; i++) {
+                                ia[i] = byteString.charCodeAt(i);
+                            }
+                            finalBlob = new Blob([ab], {type: mimeString});
+                        }
+                    } else {
+                        let dataUrl = croppedCanvas.toDataURL('image/jpeg', 0.95);
+                        let parts = dataUrl.split(',');
+                        let byteString = atob(parts[1]);
+                        let mimeString = parts[0].split(':')[1].split(';')[0];
+                        let ab = new ArrayBuffer(byteString.length);
+                        let ia = new Uint8Array(ab);
+                        for (let i = 0; i < byteString.length; i++) {
+                            ia[i] = byteString.charCodeAt(i);
+                        }
+                        finalBlob = new Blob([ab], {type: mimeString});
+                    }
+                }
+
+                finalSizeKB = (finalBlob.size / 1024).toFixed(1);
+                let finalObjectUrl = URL.createObjectURL(finalBlob);
+
+                const lastDotIndex = currentFile.name.lastIndexOf('.');
+                const baseName = lastDotIndex !== -1 ? currentFile.name.substring(0, lastDotIndex) : currentFile.name;
+                const newFileName = `${baseName}${config.suffix}.jpg`;
+
+                // Add to processed Results
+                processedResults.push({
+                    objectUrl: finalObjectUrl,
+                    fileName: newFileName,
+                    fileInfo: `${finalWidth}px × ${finalHeight}px • JPG • ${finalSizeKB} KB`
+                });
+
+                // Move to the next file in the queue!
+                processNextFile();
+
+            } catch (error) {
+                console.error("Error during processing:", error);
+                alert("An error occurred during processing.");
+            } finally {
+                applyCropBtn.disabled = false;
+                applyCropBtn.innerHTML = originalBtnContent;
+            }
+        });
+
+        // Show Final Results Grid when Queue is Empty
+        function showFinalResults() {
+            cropSection.classList.add('hidden');
+            cropSection.classList.remove('flex');
+            resultSection.classList.remove('hidden');
+            
+            totalProcessedText.textContent = `Successfully processed ${processedResults.length} image(s)`;
+            
+            // Render Dynamic Grid
+            resultsGrid.innerHTML = '';
+            processedResults.forEach((res) => {
+                const item = document.createElement('div');
+                item.className = 'border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col transition-all hover:shadow-md';
+                item.innerHTML = `
+                    <div class="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center gap-2">
+                        <div class="overflow-hidden">
+                            <h4 class="font-semibold text-gray-800 text-sm truncate" title="${res.fileName}">${res.fileName}</h4>
+                            <p class="text-xs text-gray-500">${res.fileInfo}</p>
+                        </div>
+                        <a href="${res.objectUrl}" download="${res.fileName}" class="flex-shrink-0 bg-white border border-gray-200 text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-2 rounded-lg transition-colors" title="Download Image">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                        </a>
+                    </div>
+                    <div class="p-4 flex-1 flex justify-center items-center bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZjBmMHViIj48L3JlY3Q+CjxyZWN0IHg9IjQiIHk9IjQiIHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmMGYwdWIiPjwvcmVjdD4KPC9zdmc+')]">
+                        <img src="${res.objectUrl}" class="max-w-full rounded shadow-sm object-contain" style="max-height: 180px;" alt="Result">
+                    </div>
+                `;
+                resultsGrid.appendChild(item);
+            });
+        }
+
+        // Trigger multiple downloads sequentially
+        downloadAllBtn.addEventListener('click', () => {
+            processedResults.forEach((res, index) => {
+                setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = res.objectUrl;
+                    a.download = res.fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }, index * 300); // Stagger by 300ms to prevent browsers from blocking bulk downloads
+            });
+        });
+
+        // Cancel / Reset Logic
+        cancelCropBtn.addEventListener('click', resetUI);
+        
+        function resetUI() {
+            // Memory Management: Clear object URLs to prevent leaks
+            processedResults.forEach(res => {
+                if (res.objectUrl) URL.revokeObjectURL(res.objectUrl);
+            });
+            
+            // Reset state
+            fileQueue = [];
+            processedResults = [];
+            totalFilesToProcess = 0;
+            fileInput.value = ''; 
+            currentFile = null;
+            
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            
+            resultSection.classList.add('hidden');
+            cropSection.classList.add('hidden');
+            cropSection.classList.remove('flex');
+            dropzone.classList.remove('hidden', 'pointer-events-none');
+            processingUI.classList.add('hidden');
+            uploadUI.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
