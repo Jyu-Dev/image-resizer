@@ -5,19 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Junly Image Auto-Resizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#000000',
+                            deep: '#14213d',
+                            primary: '#fca311',
+                            light: '#e5e5e5',
+                            white: '#ffffff'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <!-- Pica.js for high-quality Lanczos upscaling and sharpening -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pica/9.0.1/pica.min.js"></script>
+    <!-- Add Heic2Any for HEIC/HEIF file support -->
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
+            background-color: #e5e5e5; /* brand-light */
         }
         .drag-over {
-            border-color: #3b82f6 !important;
-            background-color: #eff6ff !important;
+            border-color: #fca311 !important; /* brand-primary */
+            background-color: #ffffff !important; /* brand-white */
         }
         /* Custom scrollbar for horizontal menu */
         .overflow-x-auto::-webkit-scrollbar {
@@ -29,76 +48,105 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4">
+<body class="min-h-screen flex flex-col items-center justify-center p-4 bg-brand-light">
 
-    <div class="max-w-6xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="max-w-md w-full bg-brand-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-brand-deep text-brand-white p-6 text-center">
+            <h1 class="text-2xl font-bold flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Secure Login
+            </h1>
+            <p class="text-brand-primary mt-2 text-sm">Please enter your credentials to access the Junly Image Auto-Resizer.</p>
+        </div>
+        <div class="p-8">
+            <div id="loginError" class="hidden mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium text-center border border-red-200">
+                Invalid username or password.
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-brand-deep mb-1">Username</label>
+                    <input type="text" id="username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all" placeholder="Enter username">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-brand-deep mb-1">Password</label>
+                    <input type="password" id="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all" placeholder="Enter password">
+                </div>
+                <button id="loginBtn" class="w-full bg-brand-primary hover:bg-brand-deep text-brand-deep hover:text-brand-white font-bold py-2.5 px-4 rounded-lg transition-colors mt-2">
+                    Login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container (Hidden initially) -->
+    <div id="mainApp" class="hidden max-w-6xl w-full bg-brand-white rounded-2xl shadow-xl overflow-hidden">
         <!-- Header -->
-        <div class="bg-gray-900 text-white p-6 text-center">
+        <div class="bg-brand-deep text-brand-white p-6 text-center">
             <h1 class="text-2xl font-bold flex items-center justify-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                 Junly Image Auto-Resizer
             </h1>
-            <p class="text-gray-300 mt-2 text-sm">
-                Until you can see, and admit, that YOU are the problem.<br>
-                You will be unable to realize that YOU must be the solution.
+            <p class="text-brand-primary mt-2 text-sm">
+                Fake it until you make it. And once you make it, keep faking it, because by then, you’ve forgotten how to be real anyway.
             </p>
         </div>
 
         <div class="p-8">
             <!-- Mode Selection -->
             <div class="mb-6 flex flex-nowrap overflow-x-auto gap-3 md:gap-4 pb-4 px-2 scroll-smooth before:m-auto after:m-auto w-full">
-                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-white border-2 border-blue-500 px-4 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-all" id="label-standard">
-                    <input type="radio" name="resizeMode" value="standard" class="w-4 h-4 text-blue-600 focus:ring-blue-500" checked>
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-brand-white border-2 border-brand-primary px-4 py-3 rounded-xl shadow-sm hover:bg-brand-light transition-all" id="label-standard">
+                    <input type="radio" name="resizeMode" value="standard" class="w-4 h-4 text-brand-primary focus:ring-brand-primary" checked>
                     <div>
-                        <div class="font-bold text-gray-800">Standard (-res)</div>
+                        <div class="font-bold text-brand-deep">Standard (-res)</div>
                         <div class="text-xs text-gray-500">800x400px • 120-160kb</div>
                     </div>
                 </label>
-                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-all" id="label-featured">
-                    <input type="radio" name="resizeMode" value="featured" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-brand-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-brand-light transition-all" id="label-featured">
+                    <input type="radio" name="resizeMode" value="featured" class="w-4 h-4 text-brand-primary focus:ring-brand-primary">
                     <div>
-                        <div class="font-bold text-gray-800">Featured (-feat)</div>
+                        <div class="font-bold text-brand-deep">Featured (-feat)</div>
                         <div class="text-xs text-gray-500">650x433px • 120-180kb</div>
                     </div>
                 </label>
-                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-all" id="label-cover">
-                    <input type="radio" name="resizeMode" value="cover" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-brand-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-brand-light transition-all" id="label-cover">
+                    <input type="radio" name="resizeMode" value="cover" class="w-4 h-4 text-brand-primary focus:ring-brand-primary">
                     <div>
-                        <div class="font-bold text-gray-800">Cover (-cover)</div>
+                        <div class="font-bold text-brand-deep">Cover (-cover)</div>
                         <div class="text-xs text-gray-500">1600x800px • 210-230kb</div>
                     </div>
                 </label>
-                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-all" id="label-fpres">
-                    <input type="radio" name="resizeMode" value="fpres" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-brand-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-brand-light transition-all" id="label-fpres">
+                    <input type="radio" name="resizeMode" value="fpres" class="w-4 h-4 text-brand-primary focus:ring-brand-primary">
                     <div>
-                        <div class="font-bold text-gray-800">FPP (-fpres)</div>
+                        <div class="font-bold text-brand-deep">FPP (-fpres)</div>
                         <div class="text-xs text-gray-500">1200x800px • 140-180kb</div>
                     </div>
                 </label>
-                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-all" id="label-upscale">
-                    <input type="radio" name="resizeMode" value="upscale" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-brand-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-brand-light transition-all" id="label-upscale">
+                    <input type="radio" name="resizeMode" value="upscale" class="w-4 h-4 text-brand-primary focus:ring-brand-primary">
                     <div>
-                        <div class="font-bold text-gray-800">Upscale (-up)</div>
+                        <div class="font-bold text-brand-deep">Upscale (-up)</div>
                         <div class="text-xs text-gray-500">Enhance x2, x4, x8</div>
                     </div>
                 </label>
             </div>
 
             <!-- Upload Zone -->
-            <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center transition-all duration-200 cursor-pointer hover:bg-gray-50 flex flex-col items-center justify-center min-h-[250px]">
+            <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center transition-all duration-200 cursor-pointer hover:bg-brand-light flex flex-col items-center justify-center min-h-[250px]">
                 <!-- Added 'multiple' attribute here to accept batch uploads -->
-                <input type="file" id="fileInput" class="hidden" accept="image/*" multiple>
+                <input type="file" id="fileInput" class="hidden" accept="image/*,.heic,.heif" multiple>
                 <div id="uploadUI" class="flex flex-col items-center pointer-events-none">
-                    <div class="bg-blue-100 p-4 rounded-full mb-4 text-blue-600">
+                    <div class="bg-brand-light p-4 rounded-full mb-4 text-brand-primary">
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
                     </div>
-                    <h3 class="text-lg font-semibold text-gray-800">Click to upload or drag and drop</h3>
-                    <p class="text-sm text-gray-500 mt-1">PNG, JPG, WEBP, or GIF (Multiple allowed)</p>
+                    <h3 class="text-lg font-semibold text-brand-deep">Click to upload or drag and drop</h3>
+                    <p class="text-sm text-gray-500 mt-1">PNG, JPG, WEBP, GIF, or HEIC (Multiple allowed)</p>
                 </div>
 
                 <!-- Processing UI -->
                 <div id="processingUI" class="hidden flex flex-col items-center">
-                    <svg class="animate-spin h-10 w-10 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg class="animate-spin h-10 w-10 text-brand-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -108,26 +156,26 @@
 
             <!-- Manual Crop Section -->
             <div id="cropSection" class="hidden flex-col items-center mt-4">
-                <h3 class="text-lg font-semibold text-gray-800 mb-2 w-full flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-brand-deep mb-2 w-full flex justify-between items-center">
                     <span>Adjust Crop Area</span>
-                    <span id="queueCounter" class="hidden bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full font-medium shadow-sm">Image 1 of 3</span>
+                    <span id="queueCounter" class="hidden bg-brand-light text-brand-deep text-xs px-3 py-1 rounded-full font-medium shadow-sm">Image 1 of 3</span>
                 </h3>
                 <p class="text-sm text-gray-500 mb-6 w-full text-left">Drag and resize the box to select the exact area you want. The aspect ratio is locked to <span id="aspectRatioText">800x400</span>.</p>
-                <div class="w-full max-h-[500px] bg-gray-100 rounded overflow-hidden flex justify-center border border-gray-300">
+                <div class="w-full max-h-[500px] bg-brand-light rounded overflow-hidden flex justify-center border border-gray-300">
                     <img id="imageToCrop" src="" class="max-w-full block" alt="Image to crop">
                 </div>
                 <div class="w-full flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
                     <div id="upscaleControls" class="hidden items-center gap-2 w-full sm:w-auto justify-center sm:justify-start">
                         <label for="upscaleMultiplier" class="text-sm font-semibold text-gray-700">Multiplier:</label>
-                        <select id="upscaleMultiplier" class="bg-white border border-gray-300 text-gray-900 text-sm rounded focus:ring-blue-500 focus:border-blue-500 block px-2 py-1">
+                        <select id="upscaleMultiplier" class="bg-brand-white border border-gray-300 text-brand-deep text-sm rounded focus:ring-brand-primary focus:border-brand-primary block px-2 py-1">
                             <option value="2">x2 (Standard Enhance)</option>
                             <option value="4">x4 (Deep Enhance)</option>
                             <option value="8">x8 (Ultra Enhance)</option>
                         </select>
                     </div>
                     <div class="flex justify-end gap-3 w-full sm:w-auto ml-auto">
-                        <button id="cancelCropBtn" class="px-5 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors">Cancel Batch</button>
-                        <button id="applyCropBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 min-w-[150px]">
+                        <button id="cancelCropBtn" class="px-5 py-2 text-gray-600 hover:text-brand-deep font-medium transition-colors">Cancel Batch</button>
+                        <button id="applyCropBtn" class="bg-brand-primary hover:bg-brand-deep text-brand-deep hover:text-brand-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 min-w-[150px]">
                             <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
                             <span>Apply & Save</span>
                         </button>
@@ -137,13 +185,13 @@
 
             <!-- Result Section (Batch Ready) -->
             <div id="resultSection" class="hidden mt-8">
-                <div class="border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
-                    <div class="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white gap-4">
+                <div class="border border-gray-200 rounded-xl overflow-hidden bg-brand-light">
+                    <div class="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-brand-white gap-4">
                         <div>
-                            <h4 class="font-semibold text-gray-800">Processing Complete</h4>
+                            <h4 class="font-semibold text-brand-deep">Processing Complete</h4>
                             <p class="text-xs text-gray-500" id="totalProcessedText">Processed 1 image</p>
                         </div>
-                        <button id="downloadAllBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shadow-sm">
+                        <button id="downloadAllBtn" class="bg-brand-primary hover:bg-brand-deep text-brand-deep hover:text-brand-white px-5 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shadow-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                             Download All
                         </button>
@@ -154,7 +202,7 @@
                         <!-- Populated by JS -->
                     </div>
                 </div>
-                <button id="resetBtn" class="mt-6 text-sm font-medium text-gray-500 hover:text-gray-800 underline flex items-center justify-center w-full">
+                <button id="resetBtn" class="mt-6 text-sm font-medium text-gray-500 hover:text-brand-deep underline flex items-center justify-center w-full">
                     Process another batch
                 </button>
             </div>
@@ -165,6 +213,45 @@
     <canvas id="canvas" class="hidden"></canvas>
 
     <script>
+        // --- Login Logic ---
+        const loginScreen = document.getElementById('loginScreen');
+        const mainApp = document.getElementById('mainApp');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
+
+        // You can change your desired Username and Password here:
+        const VALID_USERNAME = 'junly_admin';
+        const VALID_PASSWORD = 'Welcome2WJ!';
+
+        loginBtn.addEventListener('click', () => {
+            if (usernameInput.value === VALID_USERNAME && passwordInput.value === VALID_PASSWORD) {
+                // Success: Hide login, show main app
+                loginScreen.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                
+                // Clear inputs for security
+                usernameInput.value = '';
+                passwordInput.value = '';
+                loginError.classList.add('hidden');
+            } else {
+                // Fail: Show error
+                loginError.classList.remove('hidden');
+                passwordInput.value = ''; // clear password field for retry
+                passwordInput.focus();
+            }
+        });
+
+        // Allow hitting "Enter" key to login smoothly
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loginBtn.click();
+        });
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') passwordInput.focus();
+        });
+
+        // --- Existing App Logic ---
         const dropzone = document.getElementById('dropzone');
         const fileInput = document.getElementById('fileInput');
         const uploadUI = document.getElementById('uploadUI');
@@ -217,7 +304,7 @@
                 
                 // Update dynamic instruction text
                 if (currentMode === 'upscale') {
-                    aspectRatioText.innerHTML = 'Free <span class="text-blue-600 font-semibold">(Advanced HD Reconstruction Enabled)</span>';
+                    aspectRatioText.innerHTML = 'Free <span class="text-brand-primary font-semibold">(Advanced HD Reconstruction Enabled)</span>';
                     upscaleControls.classList.remove('hidden');
                     upscaleControls.classList.add('flex');
                 } else {
@@ -228,20 +315,20 @@
                 
                 // Reset styling for all
                 [labelStandard, labelFeatured, labelFpres, labelCover, labelUpscale].forEach(label => {
-                    label.classList.replace('border-blue-500', 'border-gray-200');
+                    label.classList.replace('border-brand-primary', 'border-gray-200');
                 });
                 
                 // Apply active styling
                 if (currentMode === 'standard') {
-                    labelStandard.classList.replace('border-gray-200', 'border-blue-500');
+                    labelStandard.classList.replace('border-gray-200', 'border-brand-primary');
                 } else if (currentMode === 'featured') {
-                    labelFeatured.classList.replace('border-gray-200', 'border-blue-500');
+                    labelFeatured.classList.replace('border-gray-200', 'border-brand-primary');
                 } else if (currentMode === 'fpres') {
-                    labelFpres.classList.replace('border-gray-200', 'border-blue-500');
+                    labelFpres.classList.replace('border-gray-200', 'border-brand-primary');
                 } else if (currentMode === 'cover') {
-                    labelCover.classList.replace('border-gray-200', 'border-blue-500');
+                    labelCover.classList.replace('border-gray-200', 'border-brand-primary');
                 } else if (currentMode === 'upscale') {
-                    labelUpscale.classList.replace('border-gray-200', 'border-blue-500');
+                    labelUpscale.classList.replace('border-gray-200', 'border-brand-primary');
                 }
 
                 // If currently cropping, re-initialize with new aspect ratio instantly
@@ -289,8 +376,8 @@
         function handleFiles(files) {
             if (files.length === 0) return;
             
-            // Filter out non-image files
-            const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+            // Filter out non-image files (now supports HEIC)
+            const validFiles = Array.from(files).filter(f => f.type.startsWith('image/') || f.name.toLowerCase().match(/\.(heic|heif)$/i));
             
             if (validFiles.length === 0) {
                 alert('Please upload valid image files.');
@@ -333,10 +420,35 @@
             loadImageForCropping(currentFile);
         }
 
-        function loadImageForCropping(file) {
+        async function loadImageForCropping(file) {
             uploadUI.classList.add('hidden');
             processingUI.classList.remove('hidden');
             dropzone.classList.add('pointer-events-none');
+
+            let fileToProcess = file;
+            const isHeic = file.type === 'image/heic' || file.name.toLowerCase().match(/\.(heic|heif)$/i);
+
+            if (isHeic) {
+                const processingText = processingUI.querySelector('p');
+                const originalText = processingText.textContent;
+                processingText.textContent = 'Converting HEIC format...';
+                
+                try {
+                    const convertedBlob = await heic2any({
+                        blob: file,
+                        toType: "image/jpeg",
+                        quality: 0.95
+                    });
+                    // Handle case where heic2any returns an array of blobs (for multi-image HEICs)
+                    fileToProcess = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+                    processingText.textContent = originalText;
+                } catch (error) {
+                    console.error("HEIC conversion error:", error);
+                    alert("Failed to convert HEIC image. The file might be corrupted or unsupported.");
+                    processNextFile(); // Skip to next file
+                    return;
+                }
+            }
 
             const reader = new FileReader();
 
@@ -406,7 +518,7 @@
                 img.src = e.target.result;
             };
 
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(fileToProcess);
         }
 
         // Apply Crop Button Logic (Processes current image and grabs next)
@@ -601,14 +713,14 @@
             resultsGrid.innerHTML = '';
             processedResults.forEach((res) => {
                 const item = document.createElement('div');
-                item.className = 'border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col transition-all hover:shadow-md';
+                item.className = 'border border-gray-200 rounded-xl overflow-hidden bg-brand-white shadow-sm flex flex-col transition-all hover:shadow-md';
                 item.innerHTML = `
-                    <div class="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center gap-2">
+                    <div class="p-3 bg-brand-light border-b border-gray-200 flex justify-between items-center gap-2">
                         <div class="overflow-hidden">
-                            <h4 class="font-semibold text-gray-800 text-sm truncate" title="${res.fileName}">${res.fileName}</h4>
+                            <h4 class="font-semibold text-brand-deep text-sm truncate" title="${res.fileName}">${res.fileName}</h4>
                             <p class="text-xs text-gray-500">${res.fileInfo}</p>
                         </div>
-                        <a href="${res.objectUrl}" download="${res.fileName}" class="flex-shrink-0 bg-white border border-gray-200 text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-2 rounded-lg transition-colors" title="Download Image">
+                        <a href="${res.objectUrl}" download="${res.fileName}" class="flex-shrink-0 bg-brand-white border border-gray-200 text-brand-primary hover:text-brand-white hover:bg-brand-primary p-2 rounded-lg transition-colors" title="Download Image">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                         </a>
                     </div>
