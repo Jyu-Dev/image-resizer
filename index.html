@@ -73,6 +73,10 @@
                     <label for="password" class="block text-sm font-medium text-brand-deep mb-1">Password</label>
                     <input type="password" id="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all" placeholder="Enter password">
                 </div>
+                <div class="flex items-center pt-1 pb-1">
+                    <input type="checkbox" id="rememberMe" class="w-4 h-4 text-brand-primary focus:ring-brand-primary border-gray-300 rounded cursor-pointer">
+                    <label for="rememberMe" class="ml-2 block text-sm text-brand-deep cursor-pointer select-none">Remember me</label>
+                </div>
                 <button id="loginBtn" class="w-full bg-brand-primary hover:bg-brand-deep text-brand-deep hover:text-brand-white font-bold py-2.5 px-4 rounded-lg transition-colors mt-2">
                     Login
                 </button>
@@ -83,13 +87,13 @@
     <!-- Main App Container (Hidden initially) -->
     <div id="mainApp" class="hidden max-w-6xl w-full bg-brand-white rounded-2xl shadow-xl overflow-hidden">
         <!-- Header -->
-        <div class="bg-brand-deep text-brand-white p-6 text-center">
+        <div class="bg-brand-deep text-brand-white p-6 text-center relative">
             <h1 class="text-2xl font-bold flex items-center justify-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                Junly Image Auto-Resizer
+                Image Auto-Resizer - Junly
             </h1>
-            <p class="text-brand-primary mt-2 text-sm">
-                Fake it until you make it. And once you make it, keep faking it, because by then, you’ve forgotten how to be real anyway.
+            <p id="quoteText" class="text-brand-primary mt-2 text-sm italic transition-opacity duration-500">
+                Loading daily inspiration...
             </p>
         </div>
 
@@ -251,11 +255,36 @@
     <canvas id="canvas" class="hidden"></canvas>
 
     <script>
+        // --- Random Quote Generator ---
+        const quotes = [
+            "Fake it until you make it. And once you make it, keep faking it, because by then, you’ve forgotten how to be real anyway.",
+            "The only way to do great work is to love what you do. — Steve Jobs",
+            "Believe you can and you're halfway there. — Theodore Roosevelt",
+            "The future belongs to those who believe in the beauty of their dreams. — Eleanor Roosevelt",
+            "It does not matter how slowly you go as long as you do not stop. — Confucius",
+            "Success is not final, failure is not fatal: it is the courage to continue that counts. — Winston Churchill",
+            "You miss 100% of the shots you don't take. — Wayne Gretzky",
+            "The best way to predict your future is to create it. — Abraham Lincoln",
+            "Don't watch the clock; do what it does. Keep going. — Sam Levenson",
+            "Hardships often prepare ordinary people for an extraordinary destiny. — C.S. Lewis",
+            "Act as if what you do makes a difference. It does. — William James",
+            "Gikapoy ka? Undang na. — Junly",
+            "Kaya kong magpakahirap kahit na magpakamatay, makuha ka lang. - Ayuda",
+            "Being born in the Philippines is enough motivation - get tf up! and start grinding.",
+            "Ganahan ka ma datu? ganahan sad ko 😌 - Junly",
+            "In every Problem, Jesus is the Solution ☝️ - Junly",
+            "Ayaw kabalaka kung d ka gwapo, ayaw panamin - Junly",
+            "True strength is not about having authority, it's about the courage to help others in need. - Junly",
+            "You can be the richest person in the world but not happy, so I give up dreaming of becoming happy. - Junly"
+        ];
+        document.getElementById('quoteText').textContent = quotes[Math.floor(Math.random() * quotes.length)];
+
         // --- Login Logic ---
         const loginScreen = document.getElementById('loginScreen');
         const mainApp = document.getElementById('mainApp');
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
+        const rememberMeInput = document.getElementById('rememberMe');
         const loginBtn = document.getElementById('loginBtn');
         const loginError = document.getElementById('loginError');
 
@@ -264,6 +293,12 @@
             'junly_admin': { pass: 'Welcome2WJ!', role: 'admin' },
             'PS_user': { pass: 'user', role: 'user' }
         };
+
+        // Check if user chose to be remembered previously
+        if (localStorage.getItem('junly_logged_in') === 'true') {
+            loginScreen.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+        }
 
         loginBtn.addEventListener('click', () => {
             const inputUser = usernameInput.value;
@@ -274,9 +309,15 @@
                 loginScreen.classList.add('hidden');
                 mainApp.classList.remove('hidden');
                 
+                // Save session if Remember Me is checked
+                if (rememberMeInput.checked) {
+                    localStorage.setItem('junly_logged_in', 'true');
+                }
+
                 // Clear inputs for security
                 usernameInput.value = '';
                 passwordInput.value = '';
+                rememberMeInput.checked = false;
                 loginError.classList.add('hidden');
             } else {
                 // Fail: Show error
