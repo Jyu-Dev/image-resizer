@@ -124,6 +124,13 @@
                         <div class="text-xs text-gray-500">1200x800px • 140-180kb</div>
                     </div>
                 </label>
+                <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-brand-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-brand-light transition-all" id="label-custom">
+                    <input type="radio" name="resizeMode" value="custom" class="w-4 h-4 text-brand-primary focus:ring-brand-primary">
+                    <div>
+                        <div class="font-bold text-brand-deep">Custom Mode</div>
+                        <div class="text-xs text-gray-500">Define own size/text</div>
+                    </div>
+                </label>
                 <label class="cursor-pointer flex-shrink-0 flex items-center gap-3 bg-brand-white border-2 border-gray-200 px-4 py-3 rounded-xl shadow-sm hover:bg-brand-light transition-all" id="label-upscale">
                     <input type="radio" name="resizeMode" value="upscale" class="w-4 h-4 text-brand-primary focus:ring-brand-primary">
                     <div>
@@ -131,6 +138,30 @@
                         <div class="text-xs text-gray-500">Enhance x2, x4, x8</div>
                     </div>
                 </label>
+            </div>
+
+            <!-- Custom Mode Settings Panel -->
+            <div id="customSettingsPanel" class="hidden mb-6 bg-[#f0e7cf] border border-[#d6c79f] p-5 rounded-xl grid grid-cols-2 md:grid-cols-5 gap-4 shadow-inner transition-all">
+                <div>
+                    <label class="block text-xs font-semibold text-brand-deep mb-1">Width (px)</label>
+                    <input type="number" id="customWidth" value="1080" min="1" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-brand-deep mb-1">Height (px)</label>
+                    <input type="number" id="customHeight" value="1080" min="1" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-brand-deep mb-1">Min Size (KB)</label>
+                    <input type="number" id="customMinKB" value="100" min="0" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-brand-deep mb-1">Max Size (KB)</label>
+                    <input type="number" id="customMaxKB" value="300" min="0" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm transition-all">
+                </div>
+                <div class="col-span-2 md:col-span-1">
+                    <label class="block text-xs font-semibold text-brand-deep mb-1">Filename Suffix</label>
+                    <input type="text" id="customSuffix" value="-custom" class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-brand-primary outline-none text-sm transition-all">
+                </div>
             </div>
 
             <!-- Upload Zone -->
@@ -166,13 +197,19 @@
                     <img id="imageToCrop" src="" class="max-w-full block" alt="Image to crop">
                 </div>
                 <div class="w-full flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
-                    <div id="upscaleControls" class="hidden items-center gap-2 w-full sm:w-auto justify-center sm:justify-start">
-                        <label for="upscaleMultiplier" class="text-sm font-semibold text-gray-700">Multiplier:</label>
-                        <select id="upscaleMultiplier" class="bg-brand-white border border-gray-300 text-brand-deep text-sm rounded focus:ring-brand-primary focus:border-brand-primary block px-2 py-1">
-                            <option value="2">x2 (Standard Enhance)</option>
-                            <option value="4">x4 (Deep Enhance)</option>
-                            <option value="8">x8 (Ultra Enhance)</option>
-                        </select>
+                    <div id="upscaleControls" class="hidden items-center gap-4 w-full sm:w-auto justify-center sm:justify-start">
+                        <div class="flex items-center gap-2">
+                            <label for="upscaleMultiplier" class="text-sm font-semibold text-gray-700">Multiplier:</label>
+                            <select id="upscaleMultiplier" class="bg-brand-white border border-gray-300 text-brand-deep text-sm rounded focus:ring-brand-primary focus:border-brand-primary block px-2 py-1">
+                                <option value="2">x2 (Standard)</option>
+                                <option value="4">x4 (Deep)</option>
+                                <option value="8">x8 (Ultra)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 border-l border-gray-300 pl-4">
+                            <input type="checkbox" id="polishToggle" checked class="w-4 h-4 text-brand-primary focus:ring-brand-primary border-gray-300 rounded cursor-pointer">
+                            <label for="polishToggle" class="text-sm font-semibold text-gray-700 cursor-pointer select-none">Color & Edge Polish</label>
+                        </div>
                     </div>
                     <div class="flex justify-end gap-3 w-full sm:w-auto ml-auto">
                         <button id="cancelCropBtn" class="px-5 py-2 text-gray-600 hover:text-brand-deep font-medium transition-colors">Cancel Batch</button>
@@ -222,12 +259,17 @@
         const loginBtn = document.getElementById('loginBtn');
         const loginError = document.getElementById('loginError');
 
-        // You can change your desired Username and Password here:
-        const VALID_USERNAME = 'junly_admin';
-        const VALID_PASSWORD = 'Welcome2WJ!';
+        // Define users and their roles
+        const users = {
+            'junly_admin': { pass: 'Welcome2WJ!', role: 'admin' },
+            'PS_user': { pass: 'user', role: 'user' }
+        };
 
         loginBtn.addEventListener('click', () => {
-            if (usernameInput.value === VALID_USERNAME && passwordInput.value === VALID_PASSWORD) {
+            const inputUser = usernameInput.value;
+            const inputPass = passwordInput.value;
+
+            if (users[inputUser] && users[inputUser].pass === inputPass) {
                 // Success: Hide login, show main app
                 loginScreen.classList.add('hidden');
                 mainApp.classList.remove('hidden');
@@ -285,6 +327,7 @@
             featured: { width: 650, height: 433, suffix: '-feat', minKB: 120, maxKB: 180 },
             fpres: { width: 1200, height: 800, suffix: '-fpres', minKB: 140, maxKB: 180 },
             cover: { width: 1600, height: 800, suffix: '-cover', minKB: 210, maxKB: 230 },
+            custom: { width: 1080, height: 1080, suffix: '-custom', minKB: 100, maxKB: 300 },
             upscale: { width: null, height: null, suffix: '-up', minKB: null, maxKB: null }
         };
         let currentMode = 'standard';
@@ -295,8 +338,31 @@
         const labelFeatured = document.getElementById('label-featured');
         const labelFpres = document.getElementById('label-fpres');
         const labelCover = document.getElementById('label-cover');
+        const labelCustom = document.getElementById('label-custom');
         const labelUpscale = document.getElementById('label-upscale');
         const upscaleControls = document.getElementById('upscaleControls');
+        const customSettingsPanel = document.getElementById('customSettingsPanel');
+
+        // Custom Mode Updaters
+        function updateCustomMode() {
+            modes.custom.width = parseInt(document.getElementById('customWidth').value) || 1080;
+            modes.custom.height = parseInt(document.getElementById('customHeight').value) || 1080;
+            modes.custom.minKB = parseFloat(document.getElementById('customMinKB').value) || null;
+            modes.custom.maxKB = parseFloat(document.getElementById('customMaxKB').value) || null;
+            modes.custom.suffix = document.getElementById('customSuffix').value || '';
+
+            if (currentMode === 'custom') {
+                aspectRatioText.textContent = `${modes.custom.width}x${modes.custom.height}`;
+                // Instantly update cropper if it's currently active
+                if (cropper && currentFile) {
+                    cropper.setAspectRatio(modes.custom.width / modes.custom.height);
+                }
+            }
+        }
+
+        ['customWidth', 'customHeight', 'customMinKB', 'customMaxKB', 'customSuffix'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateCustomMode);
+        });
 
         modeRadios.forEach(radio => {
             radio.addEventListener('change', (e) => {
@@ -308,14 +374,21 @@
                     aspectRatioText.innerHTML = 'Free <span class="text-brand-primary font-semibold">(Advanced HD Reconstruction Enabled)</span>';
                     upscaleControls.classList.remove('hidden');
                     upscaleControls.classList.add('flex');
+                    customSettingsPanel.classList.add('hidden');
+                } else if (currentMode === 'custom') {
+                    aspectRatioText.textContent = `${config.width}x${config.height}`;
+                    upscaleControls.classList.add('hidden');
+                    upscaleControls.classList.remove('flex');
+                    customSettingsPanel.classList.remove('hidden');
                 } else {
                     aspectRatioText.textContent = `${config.width}x${config.height}`;
                     upscaleControls.classList.add('hidden');
                     upscaleControls.classList.remove('flex');
+                    customSettingsPanel.classList.add('hidden');
                 }
                 
                 // Reset styling for all
-                [labelStandard, labelFeatured, labelFpres, labelCover, labelUpscale].forEach(label => {
+                [labelStandard, labelFeatured, labelFpres, labelCover, labelCustom, labelUpscale].forEach(label => {
                     label.classList.replace('border-brand-primary', 'border-gray-200');
                 });
                 
@@ -328,6 +401,8 @@
                     labelFpres.classList.replace('border-gray-200', 'border-brand-primary');
                 } else if (currentMode === 'cover') {
                     labelCover.classList.replace('border-gray-200', 'border-brand-primary');
+                } else if (currentMode === 'custom') {
+                    labelCustom.classList.replace('border-gray-200', 'border-brand-primary');
                 } else if (currentMode === 'upscale') {
                     labelUpscale.classList.replace('border-gray-200', 'border-brand-primary');
                 }
@@ -545,47 +620,49 @@
                 if (currentMode === 'upscale') {
                     const baseCanvas = cropper.getCroppedCanvas();
                     const multiplier = parseInt(document.getElementById('upscaleMultiplier').value);
+                    const isPolished = document.getElementById('polishToggle').checked;
+                    
                     finalWidth = baseCanvas.width * multiplier;
                     finalHeight = baseCanvas.height * multiplier;
 
-                    // --- MAXIMUM POTENTIAL UPSCALE PIPELINE ---
+                    // --- ULTIMATE BROWSER UPSCALE PIPELINE ---
                     const pica = window.pica();
-                    let currentCanvas = baseCanvas;
                     
-                    let steps = [];
-                    if (multiplier === 8) steps = [2, 4, 8];
-                    else if (multiplier === 4) steps = [2, 4];
-                    else steps = [2];
+                    let targetCanvas = document.createElement('canvas');
+                    targetCanvas.width = finalWidth;
+                    targetCanvas.height = finalHeight;
 
-                    for (let stepMult of steps) {
-                        let stepWidth = Math.round(baseCanvas.width * stepMult);
-                        let stepHeight = Math.round(baseCanvas.height * stepMult);
-                        
-                        let targetCanvas = document.createElement('canvas');
-                        targetCanvas.width = stepWidth;
-                        targetCanvas.height = stepHeight;
+                    // Dynamic Sharpening Math:
+                    // The further we stretch it, the harder we need to pull the edges back together.
+                    let uAmount = isPolished ? Math.min(80 + (multiplier * 25), 250) : 0;
+                    let uRadius = isPolished ? Math.min(0.6 + (multiplier * 0.15), 2.0) : 0;
 
-                        let isFinal = stepMult === multiplier;
+                    // Single, pure Lanczos-3 pass. (Iterative stepping compounds resampling loss)
+                    await pica.resize(baseCanvas, targetCanvas, {
+                        quality: 3, // 3 = Best Lanczos filter
+                        unsharpAmount: uAmount, 
+                        unsharpRadius: uRadius, 
+                        unsharpThreshold: 2
+                    });
+                    
+                    let currentCanvas = targetCanvas;
+
+                    // Optional Color & Contrast Polish
+                    // Upscaling mathematically washes out vibrance. This mathematically restores it.
+                    if (isPolished) {
+                        const finalPolishCanvas = document.createElement('canvas');
+                        finalPolishCanvas.width = finalWidth;
+                        finalPolishCanvas.height = finalHeight;
+                        const polishCtx = finalPolishCanvas.getContext('2d');
                         
-                        await pica.resize(currentCanvas, targetCanvas, {
-                            quality: 3, 
-                            unsharpAmount: isFinal ? 280 : 120, 
-                            unsharpRadius: isFinal ? 1.5 : 0.8, 
-                            unsharpThreshold: 2
-                        });
-                        
-                        currentCanvas = targetCanvas;
+                        // Gentle restoration (toned down to prevent deep-frying highlights)
+                        polishCtx.filter = 'contrast(1.08) saturate(1.10) brightness(1.02)';
+                        polishCtx.drawImage(currentCanvas, 0, 0);
+                        currentCanvas = finalPolishCanvas;
                     }
 
-                    const finalPolishCanvas = document.createElement('canvas');
-                    finalPolishCanvas.width = finalWidth;
-                    finalPolishCanvas.height = finalHeight;
-                    const polishCtx = finalPolishCanvas.getContext('2d');
-                    
-                    polishCtx.filter = 'contrast(1.12) saturate(1.15) brightness(1.03)';
-                    polishCtx.drawImage(currentCanvas, 0, 0);
-
-                    let dataUrl = finalPolishCanvas.toDataURL('image/jpeg', 0.98);
+                    // High-quality JPEG export for massive resolutions
+                    let dataUrl = currentCanvas.toDataURL('image/jpeg', 0.98);
                     let parts = dataUrl.split(',');
                     let byteString = atob(parts[1]);
                     let mimeString = parts[0].split(':')[1].split(';')[0];
