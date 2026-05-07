@@ -237,9 +237,8 @@
 
     <script>
         // --- SECURE SERVER CONFIGURATION ---
-        // Right now, this points to your local machine (localhost).
-        // When you host your server on Render.com, you will paste their URL here instead!
-        const BACKEND_URL = 'https://junly-backend.onrender.com/';
+        // We removed the trailing slash to prevent double-slashes in the URL
+        const BACKEND_URL = 'https://junly-backend.onrender.com';
         
         // This is the secret key the server gives us when we log in successfully.
         // The app will refuse to process images if this key is empty!
@@ -295,7 +294,15 @@
                     body: JSON.stringify({ username: inputUser, password: inputPass })
                 });
                 
-                const data = await response.json();
+                // Read the response as text first to handle cases where the server returns an HTML error page (like a 404/502)
+                const responseText = await response.text();
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    throw new Error("Server returned an invalid response. Your backend might be offline or still starting up.");
+                }
 
                 if (data.success) {
                     // Success! The server validated the password and sent us the unlock token
@@ -319,7 +326,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                loginError.textContent = "Cannot connect to secure server, or invalid password.";
+                loginError.textContent = err.message || "Cannot connect to secure server, or invalid password.";
                 loginError.classList.remove('hidden');
                 passwordInput.value = '';
                 passwordInput.focus();
