@@ -271,11 +271,16 @@
         const loginBtn = document.getElementById('loginBtn');
         const loginError = document.getElementById('loginError');
 
-        // Check if user chose to be remembered previously
-        if (localStorage.getItem('junly_logged_in') === 'true') {
-            sessionUnlockToken = localStorage.getItem('junly_session_token');
+        // Check if user chose to be remembered previously AND has a valid token
+        const savedToken = localStorage.getItem('junly_session_token');
+        if (localStorage.getItem('junly_logged_in') === 'true' && savedToken) {
+            sessionUnlockToken = savedToken;
             loginScreen.classList.add('hidden');
             mainApp.classList.remove('hidden');
+        } else {
+            // Clean up any old invalid sessions from before the secure server was added
+            localStorage.removeItem('junly_logged_in');
+            localStorage.removeItem('junly_session_token');
         }
 
         loginBtn.addEventListener('click', async () => {
